@@ -1,2 +1,51 @@
+# Dependency directories (Folder dependency Node.js)
+node_modules/
+jspm_packages/
+
+# Environment variables & Secrets (SANGAT PENTING: Jangan di-commit demi keamanan!)
 .env
-node_modules
+.env.local
+.env.*.local
+*.env
+
+# Logs (File log aktivitas aplikasi)
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Diagnostic reports (Laporan crash & performa)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data & Local databases (Data temporary runtime & database lokal)
+pids
+*.pid
+*.seed
+*.pid.lock
+*.db
+*.sqlite
+
+# Directory for instrumented code coverage (Hasil pengujian/testing)
+coverage/
+.nyc_output/
+
+# IDE / Editors (Konfigurasi text editor/IDE personal)
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS Metadata (File sistem operasi)
+.DS_Store
+Thumbs.db
+
+# Catatan tentang package-lock.json:
+# Secara best practice, package-lock.json sebaiknya TETAP DI-COMMIT agar versi dependency
+# yang di-install konsisten di semua lingkungan (development, production, dll).
+# Jika Anda tetap ingin mengabaikannya, Anda bisa menambahkan 'package-lock.json' di bawah ini.
