@@ -1,4 +1,5 @@
 import TransactionModel from '../models/transactionModel.js';
+import cacheEngine from '../utils/cache.js';
 
 const TransactionController = {
   /**
@@ -44,13 +45,17 @@ const TransactionController = {
   },
 
   /**
-   * Menambahkan transaksi baru
+   * Menambahkan transaksi baru (Invalidasi cache analisis)
    */
   async createTransaction(req, res, next) {
     try {
       const transactionData = req.body;
       const newTransaction = await TransactionModel.create(transactionData);
       
+      // Mengosongkan seluruh cache analisis finansial karena data mutasi telah berubah
+      await cacheEngine.deleteByPrefix('analysis:');
+      console.log('[Cache Invalidation] Berhasil mengosongkan cache analisis karena transaksi baru ditambahkan.');
+
       res.status(201).json({
         success: true,
         message: 'Transaksi berhasil ditambahkan.',
@@ -62,7 +67,7 @@ const TransactionController = {
   },
 
   /**
-   * Menghapus transaksi berdasarkan ID
+   * Menghapus transaksi berdasarkan ID (Invalidasi cache analisis)
    */
   async deleteTransaction(req, res, next) {
     try {
@@ -75,6 +80,10 @@ const TransactionController = {
           message: `Gagal menghapus. Transaksi dengan ID ${id} tidak ditemukan.`
         });
       }
+
+      // Mengosongkan seluruh cache analisis finansial karena data mutasi telah berubah
+      await cacheEngine.deleteByPrefix('analysis:');
+      console.log('[Cache Invalidation] Berhasil mengosongkan cache analisis karena transaksi dihapus.');
 
       res.json({
         success: true,

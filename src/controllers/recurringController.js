@@ -1,5 +1,6 @@
 import RecurringModel from '../models/recurringModel.js';
 import RecurringService from '../services/recurringService.js';
+import cacheEngine from '../utils/cache.js';
 
 const RecurringController = {
   /**
@@ -112,6 +113,12 @@ const RecurringController = {
       }
 
       const processResult = await RecurringService.processDueRecurring();
+
+      // Jika ada transaksi jatuh tempo yang diposting secara otomatis, kosongkan cache analisis
+      if (processResult && processResult.processed_count > 0) {
+        await cacheEngine.deleteByPrefix('analysis:');
+        console.log(`[Cache Invalidation] Berhasil mengosongkan cache analisis karena ${processResult.processed_count} transaksi berulang berhasil diposting otomatis via Cron.`);
+      }
 
       res.json({
         success: true,

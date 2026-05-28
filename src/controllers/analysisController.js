@@ -1,17 +1,31 @@
 import TransactionModel from '../models/transactionModel.js';
 import AnalyticsService from '../services/analyticsService.js';
+import cacheEngine from '../utils/cache.js';
 
 const AnalysisController = {
   /**
    * GET /api/analysis/summary
-   * Menghitung total akumulasi Saldo Akhir saat ini (Total Pemasukan - Total Pengeluaran) secara real-time
    */
   async getSummary(req, res, next) {
     try {
+      const cacheKey = 'analysis:summary';
+      const cachedData = await cacheEngine.get(cacheKey);
+
+      if (cachedData) {
+        console.log('[Cache Hit] Mengambil real-time balance summary dari cache');
+        return res.json({
+          success: true,
+          from_cache: true,
+          data: cachedData
+        });
+      }
+
       const summary = await TransactionModel.getSummary();
-      
+      await cacheEngine.set(cacheKey, summary, 300);
+
       res.json({
         success: true,
+        from_cache: false,
         data: summary
       });
     } catch (error) {
@@ -21,14 +35,27 @@ const AnalysisController = {
 
   /**
    * GET /api/analysis/category
-   * Mengelompokkan total pengeluaran berdasarkan kategori khusus bulan berjalan (SUM amount GROUP BY category WHERE type = 'expense')
    */
   async getCategoryExpenses(req, res, next) {
     try {
+      const cacheKey = 'analysis:category';
+      const cachedData = await cacheEngine.get(cacheKey);
+
+      if (cachedData) {
+        console.log('[Cache Hit] Mengambil agregasi kategori dari cache');
+        return res.json({
+          success: true,
+          from_cache: true,
+          data: cachedData
+        });
+      }
+
       const categoryExpenses = await TransactionModel.getExpenseByCategoryForCurrentMonth();
-      
+      await cacheEngine.set(cacheKey, categoryExpenses, 300);
+
       res.json({
         success: true,
+        from_cache: false,
         data: categoryExpenses
       });
     } catch (error) {
@@ -38,7 +65,6 @@ const AnalysisController = {
 
   /**
    * GET /api/analysis/budgets
-   * Mengambil kepatuhan dan proyeksi laju penggunaan anggaran (Predictive Velocity)
    */
   async getBudgetForecasts(req, res, next) {
     try {
@@ -46,10 +72,24 @@ const AnalysisController = {
       const month = req.query.month || (today.getMonth() + 1);
       const year = req.query.year || today.getFullYear();
       
+      const cacheKey = `analysis:budgets:${month}_${year}`;
+      const cachedData = await cacheEngine.get(cacheKey);
+
+      if (cachedData) {
+        console.log(`[Cache Hit] Mengambil proyeksi anggaran ${month}/${year} dari cache`);
+        return res.json({
+          success: true,
+          from_cache: true,
+          data: cachedData
+        });
+      }
+
       const forecast = await AnalyticsService.getBudgetProjections(month, year);
-      
+      await cacheEngine.set(cacheKey, forecast, 300);
+
       res.json({
         success: true,
+        from_cache: false,
         data: forecast
       });
     } catch (error) {
@@ -59,14 +99,27 @@ const AnalysisController = {
 
   /**
    * GET /api/analysis/health
-   * Mengambil kalkulasi tingkat kesehatan finansial komprehensif
    */
   async getFinancialHealth(req, res, next) {
     try {
+      const cacheKey = 'analysis:health';
+      const cachedData = await cacheEngine.get(cacheKey);
+
+      if (cachedData) {
+        console.log('[Cache Hit] Mengambil Skor Kesehatan Finansial dari cache');
+        return res.json({
+          success: true,
+          from_cache: true,
+          data: cachedData
+        });
+      }
+
       const healthReport = await AnalyticsService.getFinancialHealthScore();
-      
+      await cacheEngine.set(cacheKey, healthReport, 300);
+
       res.json({
         success: true,
+        from_cache: false,
         data: healthReport
       });
     } catch (error) {
@@ -76,15 +129,28 @@ const AnalysisController = {
 
   /**
    * GET /api/analysis/cashflow-trend
-   * Tren kas bulanan untuk keperluan visualisasi grafik historis
    */
   async getCashflowTrend(req, res, next) {
     try {
       const limitMonths = req.query.limit || 6;
+      const cacheKey = `analysis:cashflow-trend:${limitMonths}`;
+      const cachedData = await cacheEngine.get(cacheKey);
+
+      if (cachedData) {
+        console.log(`[Cache Hit] Mengambil tren cashflow bulanan (${limitMonths} bulan) dari cache`);
+        return res.json({
+          success: true,
+          from_cache: true,
+          data: cachedData
+        });
+      }
+
       const history = await TransactionModel.getMonthlyCashflowHistory(limitMonths);
-      
+      await cacheEngine.set(cacheKey, history, 300);
+
       res.json({
         success: true,
+        from_cache: false,
         data: history
       });
     } catch (error) {

@@ -1,4 +1,5 @@
 import BudgetModel from '../models/budgetModel.js';
+import cacheEngine from '../utils/cache.js';
 
 const BudgetController = {
   /**
@@ -27,6 +28,10 @@ const BudgetController = {
       const budgetData = req.body;
       const result = await BudgetModel.upsert(budgetData);
       
+      // Mengosongkan cache analisis karena budget kategori diubah/ditambahkan
+      await cacheEngine.deleteByPrefix('analysis:');
+      console.log('[Cache Invalidation] Berhasil mengosongkan cache analisis karena anggaran bulanan diubah/di-upsert.');
+
       res.json({
         success: true,
         message: 'Anggaran berhasil disimpan/diperbarui.',
@@ -51,6 +56,10 @@ const BudgetController = {
           message: `Anggaran dengan ID ${id} tidak ditemukan.`
         });
       }
+
+      // Mengosongkan cache analisis karena budget kategori dihapus
+      await cacheEngine.deleteByPrefix('analysis:');
+      console.log('[Cache Invalidation] Berhasil mengosongkan cache analisis karena anggaran bulanan dihapus.');
 
       res.json({
         success: true,
