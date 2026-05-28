@@ -2,11 +2,11 @@ import { pool } from '../config/db.js';
 
 const BudgetModel = {
   /**
-   * Mengambil semua daftar anggaran berdasarkan bulan dan tahun
+   * Mengambil semua daftar anggaran berdasarkan bulan dan tahun untuk user tertentu
    */
-  async getAll(month, year) {
-    let sql = 'SELECT id, category, amount, month, year, created_at FROM budgets WHERE 1=1';
-    const params = [];
+  async getAll(userId, month, year) {
+    let sql = 'SELECT id, category, amount, month, year, created_at FROM budgets WHERE user_id = ?';
+    const params = [userId];
 
     if (month) {
       sql += ' AND month = ?';
@@ -26,11 +26,11 @@ const BudgetModel = {
   },
 
   /**
-   * Mengambil satu budget berdasarkan kategori, bulan, dan tahun
+   * Mengambil satu budget berdasarkan kategori, bulan, dan tahun untuk user tertentu
    */
-  async getByCategoryAndMonth(category, month, year) {
-    const sql = 'SELECT id, category, amount, month, year, created_at FROM budgets WHERE category = ? AND month = ? AND year = ?';
-    const [rows] = await pool.execute(sql, [category, parseInt(month, 10), parseInt(year, 10)]);
+  async getByCategoryAndMonth(userId, category, month, year) {
+    const sql = 'SELECT id, category, amount, month, year, created_at FROM budgets WHERE user_id = ? AND category = ? AND month = ? AND year = ?';
+    const [rows] = await pool.execute(sql, [userId, category, parseInt(month, 10), parseInt(year, 10)]);
     if (rows[0]) {
       rows[0].amount = parseFloat(rows[0].amount || 0);
       return rows[0];
@@ -39,16 +39,16 @@ const BudgetModel = {
   },
 
   /**
-   * Membuat atau memperbarui budget kategori (Upsert)
+   * Membuat atau memperbarui budget kategori (Upsert) untuk user tertentu
    */
-  async upsert(data) {
+  async upsert(userId, data) {
     const { category, amount, month, year } = data;
     const sql = `
-      INSERT INTO budgets (category, amount, month, year)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO budgets (user_id, category, amount, month, year)
+      VALUES (?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE amount = VALUES(amount)
     `;
-    const [result] = await pool.execute(sql, [category, amount, parseInt(month, 10), parseInt(year, 10)]);
+    const [result] = await pool.execute(sql, [userId, category, amount, parseInt(month, 10), parseInt(year, 10)]);
     return {
       upserted: true,
       category,
@@ -60,11 +60,11 @@ const BudgetModel = {
   },
 
   /**
-   * Menghapus anggaran berdasarkan ID
+   * Menghapus anggaran berdasarkan ID untuk user tertentu
    */
-  async delete(id) {
-    const sql = 'DELETE FROM budgets WHERE id = ?';
-    const [result] = await pool.execute(sql, [id]);
+  async delete(id, userId) {
+    const sql = 'DELETE FROM budgets WHERE id = ? AND user_id = ?';
+    const [result] = await pool.execute(sql, [id, userId]);
     return result.affectedRows > 0;
   }
 };

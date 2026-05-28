@@ -6,11 +6,11 @@ const AnalyticsService = {
   /**
    * Menganalisis kepatuhan anggaran dan memproyeksikan pengeluaran bulanan
    */
-  async getBudgetProjections(month, year) {
+  async getBudgetProjections(userId, month, year) {
     const activeMonth = parseInt(month, 10);
     const activeYear = parseInt(year, 10);
     
-    const budgets = await BudgetModel.getAll(activeMonth, activeYear);
+    const budgets = await BudgetModel.getAll(userId, activeMonth, activeYear);
     
     const today = new Date();
     const currentMonth = today.getMonth() + 1;
@@ -26,6 +26,7 @@ const AnalyticsService = {
 
     for (const budget of budgets) {
       const totalSpent = await TransactionModel.getCategorySpendingForMonth(
+        userId,
         budget.category,
         activeMonth,
         activeYear
@@ -85,8 +86,8 @@ const AnalyticsService = {
   /**
    * Menganalisis target tabungan, persentase progres, dan kalkulasi alokasi bulanan wajib
    */
-  async getSavingsGoalsAnalysis() {
-    const goals = await GoalModel.getAll();
+  async getSavingsGoalsAnalysis(userId) {
+    const goals = await GoalModel.getAll(userId);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -136,14 +137,14 @@ const AnalyticsService = {
   /**
    * Mendapatkan Skor Kesehatan Finansial (Financial Health Score) gabungan
    */
-  async getFinancialHealthScore() {
-    const summary = await TransactionModel.getSummary();
-    const goals = await GoalModel.getAll();
+  async getFinancialHealthScore(userId) {
+    const summary = await TransactionModel.getSummary(userId);
+    const goals = await GoalModel.getAll(userId);
     
     const today = new Date();
     const month = today.getMonth() + 1;
     const year = today.getFullYear();
-    const budgetProjectionsObj = await this.getBudgetProjections(month, year);
+    const budgetProjectionsObj = await this.getBudgetProjections(userId, month, year);
     
     let score = 100;
     const deductions = [];

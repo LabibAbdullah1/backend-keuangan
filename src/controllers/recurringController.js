@@ -4,11 +4,12 @@ import cacheEngine from '../utils/cache.js';
 
 const RecurringController = {
   /**
-   * Mengambil semua templat transaksi berulang
+   * Mengambil semua templat transaksi berulang untuk user tertentu
    */
   async getTemplates(req, res, next) {
     try {
-      const templates = await RecurringModel.getAll();
+      const userId = req.user.id;
+      const templates = await RecurringModel.getAll(userId);
       res.json({
         success: true,
         count: templates.length,
@@ -20,12 +21,13 @@ const RecurringController = {
   },
 
   /**
-   * Mendaftarkan rencana transaksi berulang baru (Subscription / Pemasukan rutin)
+   * Mendaftarkan rencana transaksi berulang baru (Subscription / Pemasukan rutin) untuk user tertentu
    */
   async createTemplate(req, res, next) {
     try {
+      const userId = req.user.id;
       const templateData = req.body;
-      const newTemplate = await RecurringModel.create(templateData);
+      const newTemplate = await RecurringModel.create(userId, templateData);
       
       res.status(201).json({
         success: true,
@@ -38,10 +40,11 @@ const RecurringController = {
   },
 
   /**
-   * Mengubah status aktif/nonaktif templat berulang
+   * Mengubah status aktif/nonaktif templat berulang untuk user tertentu
    */
   async toggleActive(req, res, next) {
     try {
+      const userId = req.user.id;
       const { id } = req.params;
       const { is_active } = req.body;
 
@@ -52,7 +55,7 @@ const RecurringController = {
         });
       }
 
-      const template = await RecurringModel.getById(id);
+      const template = await RecurringModel.getById(id, userId);
       if (!template) {
         return res.status(404).json({
           success: false,
@@ -60,8 +63,8 @@ const RecurringController = {
         });
       }
 
-      await RecurringModel.toggleActive(id, is_active);
-      const updatedTemplate = await RecurringModel.getById(id);
+      await RecurringModel.toggleActive(id, userId, is_active);
+      const updatedTemplate = await RecurringModel.getById(id, userId);
 
       res.json({
         success: true,
@@ -74,12 +77,13 @@ const RecurringController = {
   },
 
   /**
-   * Menghapus templat transaksi berulang
+   * Menghapus templat transaksi berulang untuk user tertentu
    */
   async deleteTemplate(req, res, next) {
     try {
+      const userId = req.user.id;
       const { id } = req.params;
-      const isDeleted = await RecurringModel.delete(id);
+      const isDeleted = await RecurringModel.delete(id, userId);
       
       if (!isDeleted) {
         return res.status(404).json({
@@ -114,7 +118,7 @@ const RecurringController = {
 
       const processResult = await RecurringService.processDueRecurring();
 
-      // Jika ada transaksi jatuh tempo yang diposting secara otomatis, kosongkan cache analisis
+      // Jika ada transaksi jatuh tempo yang diposting secara otomatis, kosongkan seluruh cache analisis
       if (processResult && processResult.processed_count > 0) {
         await cacheEngine.deleteByPrefix('analysis:');
         console.log(`[Cache Invalidation] Berhasil mengosongkan cache analisis karena ${processResult.processed_count} transaksi berulang berhasil diposting otomatis via Cron.`);

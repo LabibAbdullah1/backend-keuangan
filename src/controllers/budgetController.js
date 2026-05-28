@@ -3,12 +3,13 @@ import cacheEngine from '../utils/cache.js';
 
 const BudgetController = {
   /**
-   * Mengambil semua daftar anggaran/limit bulanan
+   * Mengambil semua daftar anggaran/limit bulanan untuk user tertentu
    */
   async getBudgets(req, res, next) {
     try {
+      const userId = req.user.id;
       const { month, year } = req.query;
-      const budgets = await BudgetModel.getAll(month, year);
+      const budgets = await BudgetModel.getAll(userId, month, year);
       
       res.json({
         success: true,
@@ -21,16 +22,17 @@ const BudgetController = {
   },
 
   /**
-   * Membuat atau memperbarui (upsert) nominal batas anggaran kategori
+   * Membuat atau memperbarui (upsert) nominal batas anggaran kategori untuk user tertentu
    */
   async saveBudget(req, res, next) {
     try {
+      const userId = req.user.id;
       const budgetData = req.body;
-      const result = await BudgetModel.upsert(budgetData);
+      const result = await BudgetModel.upsert(userId, budgetData);
       
-      // Mengosongkan cache analisis karena budget kategori diubah/ditambahkan
-      await cacheEngine.deleteByPrefix('analysis:');
-      console.log('[Cache Invalidation] Berhasil mengosongkan cache analisis karena anggaran bulanan diubah/di-upsert.');
+      // Mengosongkan cache analisis user karena budget kategori diubah/ditambahkan
+      await cacheEngine.deleteByPrefix(`analysis:${userId}:`);
+      console.log(`[Cache Invalidation] Berhasil mengosongkan cache analisis user ${userId} karena anggaran bulanan diubah/di-upsert.`);
 
       res.json({
         success: true,
@@ -43,12 +45,13 @@ const BudgetController = {
   },
 
   /**
-   * Menghapus alokasi anggaran kategori berdasarkan ID
+   * Menghapus alokasi anggaran kategori berdasarkan ID untuk user tertentu
    */
   async deleteBudget(req, res, next) {
     try {
+      const userId = req.user.id;
       const { id } = req.params;
-      const isDeleted = await BudgetModel.delete(id);
+      const isDeleted = await BudgetModel.delete(id, userId);
       
       if (!isDeleted) {
         return res.status(404).json({
@@ -57,9 +60,9 @@ const BudgetController = {
         });
       }
 
-      // Mengosongkan cache analisis karena budget kategori dihapus
-      await cacheEngine.deleteByPrefix('analysis:');
-      console.log('[Cache Invalidation] Berhasil mengosongkan cache analisis karena anggaran bulanan dihapus.');
+      // Mengosongkan cache analisis user karena budget kategori dihapus
+      await cacheEngine.deleteByPrefix(`analysis:${userId}:`);
+      console.log(`[Cache Invalidation] Berhasil mengosongkan cache analisis user ${userId} karena anggaran bulanan dihapus.`);
 
       res.json({
         success: true,

@@ -1,6 +1,7 @@
 import express from 'express';
 import validate from '../middlewares/validator.js';
 import schemas from '../config/schemas.js';
+import authMiddleware from '../middlewares/authMiddleware.js';
 
 import TransactionController from '../controllers/transactionController.js';
 import BudgetController from '../controllers/budgetController.js';
@@ -11,7 +12,17 @@ import RecurringController from '../controllers/recurringController.js';
 const router = express.Router();
 
 // ==========================================
-// 1. RUTE TRANSAKSI (TRANSACTIONS)
+// 1. SECURE CRON AUTOMATION ENDPOINT (Bebas JWT, dilindungi X-CRON-KEY)
+// ==========================================
+router.post('/cron/process-recurring', RecurringController.triggerCron);
+
+// ==========================================
+// AKTIFKAN PROTEKSI JWT UNTUK SELURUH RUTE DI BAWAH INI
+// ==========================================
+router.use(authMiddleware);
+
+// ==========================================
+// 2. RUTE TRANSAKSI (TRANSACTIONS)
 // ==========================================
 router.get('/transactions', TransactionController.getTransactions);
 router.get('/transactions/:id', TransactionController.getTransactionById);
@@ -19,14 +30,14 @@ router.post('/transactions', validate(schemas.transactionSchema), TransactionCon
 router.delete('/transactions/:id', TransactionController.deleteTransaction);
 
 // ==========================================
-// 2. RUTE ANGGARAN (BUDGETS)
+// 3. RUTE ANGGARAN (BUDGETS)
 // ==========================================
 router.get('/budgets', BudgetController.getBudgets);
 router.post('/budgets', validate(schemas.budgetSchema), BudgetController.saveBudget);
 router.delete('/budgets/:id', BudgetController.deleteBudget);
 
 // ==========================================
-// 3. RUTE TARGET TABUNGAN (SAVINGS GOALS)
+// 4. RUTE TARGET TABUNGAN (SAVINGS GOALS)
 // ==========================================
 router.get('/goals', GoalController.getGoals);
 router.get('/goals/:id', GoalController.getGoalById);
@@ -36,17 +47,12 @@ router.post('/goals/:id/contribute', validate(schemas.contributionSchema), GoalC
 router.delete('/goals/:id', GoalController.deleteGoal);
 
 // ==========================================
-// 4. RUTE TRANSAKSI BERKALA / RECURRING
+// 5. RUTE TRANSAKSI BERKALA / RECURRING
 // ==========================================
 router.get('/recurring', RecurringController.getTemplates);
 router.post('/recurring', validate(schemas.recurringSchema), RecurringController.createTemplate);
 router.patch('/recurring/:id/toggle', RecurringController.toggleActive);
 router.delete('/recurring/:id', RecurringController.deleteTemplate);
-
-// ==========================================
-// 5. SECURE CRON AUTOMATION ENDPOINT
-// ==========================================
-router.post('/cron/process-recurring', RecurringController.triggerCron);
 
 // ==========================================
 // 6. RUTE ANALISIS & PROYEKSI (ANALYTICS)

@@ -3,12 +3,11 @@ import { pool } from '../config/db.js';
 const TransactionModel = {
   /**
    * Mengambil daftar transaksi dengan opsi filter
-   * @param {Object} filters - Filter pencarian (limit, category, type)
    */
-  async getAll(filters = {}) {
+  async getAll(userId, filters = {}) {
     const { type, category, limit = 100, offset = 0 } = filters;
-    let sql = 'SELECT id, type, amount, category, DATE_FORMAT(date, "%Y-%m-%d") as date, note, created_at FROM transactions WHERE 1=1';
-    const params = [];
+    let sql = 'SELECT id, type, amount, category, DATE_FORMAT(date, "%Y-%m-%d") as date, note, created_at FROM transactions WHERE user_id = ?';
+    const params = [userId];
 
     if (type) {
       sql += ' AND type = ?';
@@ -23,26 +22,26 @@ const TransactionModel = {
     sql += ' ORDER BY date DESC, id DESC LIMIT ? OFFSET ?';
     params.push(parseInt(limit, 10), parseInt(offset, 10));
 
-    const [rows] = await pool.execute(sql, params);
+    const [rows] = await pool.query(sql, params);
     return rows;
   },
 
   /**
    * Mengambil detail transaksi berdasarkan ID
    */
-  async getById(id) {
-    const sql = 'SELECT id, type, amount, category, DATE_FORMAT(date, "%Y-%m-%d") as date, note, created_at FROM transactions WHERE id = ?';
-    const [rows] = await pool.execute(sql, [id]);
+  async getById(id, userId) {
+    const sql = 'SELECT id, type, amount, category, DATE_FORMAT(date, "%Y-%m-%d") as date, note, created_at FROM transactions WHERE id = ? AND user_id = ?';
+    const [rows] = await pool.execute(sql, [id, userId]);
     return rows[0] || null;
   },
 
   /**
    * Memasukkan transaksi baru ke database
    */
-  async create(data) {
+  async create(userId, data) {
     const { type, amount, category, date, note } = data;
-    const sql = 'INSERT INTO transactions (type, amount, category, date, note) VALUES (?, ?, ?, ?, ?)';
-    const [result] = await pool.execute(sql, [type, amount, category, date, note || null]);
+    const sql = 'INSERT INTO transactions (user_id, type, amount, category, date, note) VALUES (?, ?, ?, ?, ?, ?)';
+    const [result] = await pool.execute(sql, [userId, type, amount, category, date, note || null]);
     return {
       id: result.insertId,
       ...data
@@ -52,26 +51,27 @@ const TransactionModel = {
   /**
    * Menghapus transaksi berdasarkan ID
    */
-  async delete(id) {
-    const sql = 'DELETE FROM transactions WHERE id = ?';
-    const [result] = await pool.execute(sql, [id]);
+  async delete(id, userId) {
+    const sql = 'DELETE FROM transactions WHERE id = ? AND user_id = ?';
+    const [result] = await pool.execute(sql, [id, userId]);
     return result.affectedRows > 0;
   },
 
   /**
    * Agregasi pengeluaran berdasarkan kategori untuk bulan berjalan
    */
-  async getExpenseByCategoryForCurrentMonth() {
+  async getExpenseByCategoryForCurrentMonth(userId) {
     const sql = `
       SELECT category, SUM(amount) as total_amount
       FROM transactions
       WHERE type = 'expense'
+        AND user_id = ?
         AND date >= DATE_FORMAT(NOW(), '%Y-%m-01')
         AND date <= LAST_DAY(NOW())
       GROUP BY category
       ORDER BY total_amount DESC
     `;
-    const [rows] = await pool.execute(sql);
+    const [rows] = await pool.execute(sql, [userId]);
     return rows.map(row => ({
       category: row.category,
       total_amount: parseFloat(row.total_amount || 0)
@@ -81,14 +81,15 @@ const TransactionModel = {
   /**
    * Menghitung total saldo akhir, total pemasukan, dan total pengeluaran secara real-time
    */
-  async getSummary() {
+  async getSummary(userId) {
     const sql = `
       SELECT 
         SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income,
         SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as total_expense
       FROM transactions
+      WHERE user_id = ?
     `;
-    const [rows] = await pool.execute(sql);
+    const [rows] = await pool.execute(sql, [userId]);
     const totalIncome = parseFloat(rows[0].total_income || 0);
     const totalExpense = parseFloat(rows[0].total_expense || 0);
     const balance = totalIncome - totalExpense;
@@ -103,34 +104,36 @@ const TransactionModel = {
   /**
    * Mengambil pengeluaran total kategori tertentu pada bulan berjalan
    */
-  async getCategorySpendingForMonth(category, month, year) {
+  async getCategorySpendingForMonth(userId, category, month, year) {
     const sql = `
       SELECT SUM(amount) as total_spent
       FROM transactions
       WHERE type = 'expense'
+        AND user_id = ?
         AND category = ?
         AND MONTH(date) = ?
         AND YEAR(date) = ?
     `;
-    const [rows] = await pool.execute(sql, [category, month, year]);
+    const [rows] = await pool.execute(sql, [userId, category, month, year]);
     return parseFloat(rows[0].total_spent || 0);
   },
 
   /**
    * Mendapatkan histori arus kas (cashflow) bulanan
    */
-  async getMonthlyCashflowHistory(limitMonths = 6) {
+  async getMonthlyCashflowHistory(userId, limitMonths = 6) {
     const sql = `
       SELECT 
         DATE_FORMAT(date, '%Y-%m') as month,
         SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
         SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense
       FROM transactions
+      WHERE user_id = ?
       GROUP BY DATE_FORMAT(date, '%Y-%m')
       ORDER BY month DESC
       LIMIT ?
     `;
-    const [rows] = await pool.execute(sql, [parseInt(limitMonths, 10)]);
+    const [rows] = await pool.query(sql, [userId, parseInt(limitMonths, 10)]);
     return rows.map(row => {
       const inc = parseFloat(row.income || 0);
       const exp = parseFloat(row.expense || 0);

@@ -92,6 +92,33 @@ const schemas = {
       'string.isoDate': 'Format tanggal salah, gunakan format YYYY-MM-DD.',
       'any.required': 'Tanggal mulai jatuh tempo pertama wajib diisi.'
     })
+  }),
+
+  registerSchema: Joi.object({
+    username: Joi.string().alphanum().min(3).max(30).trim().required().messages({
+      'string.alphanum': 'Username hanya boleh berisi huruf dan angka.',
+      'string.min': 'Username minimal harus 3 karakter.',
+      'string.max': 'Username maksimal 30 karakter.',
+      'any.required': 'Username wajib diisi.'
+    }),
+    email: Joi.string().email().required().messages({
+      'string.email': 'Format email tidak valid.',
+      'any.required': 'Email wajib diisi.'
+    }),
+    password: Joi.string().min(6).max(100).required().messages({
+      'string.min': 'Password minimal harus 6 karakter.',
+      'string.max': 'Password maksimal 100 karakter.',
+      'any.required': 'Password wajib diisi.'
+    })
+  }),
+
+  loginSchema: Joi.object({
+    emailOrUsername: Joi.string().trim().required().messages({
+      'any.required': 'Username atau Email wajib diisi.'
+    }),
+    password: Joi.string().required().messages({
+      'any.required': 'Password wajib diisi.'
+    })
   })
 };
 

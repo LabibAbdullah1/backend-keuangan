@@ -25,8 +25,9 @@ const RecurringService = {
       for (const template of dueTemplates) {
         await connection.beginTransaction();
 
-        const insertSql = 'INSERT INTO transactions (type, amount, category, date, note) VALUES (?, ?, ?, ?, ?)';
+        const insertSql = 'INSERT INTO transactions (user_id, type, amount, category, date, note) VALUES (?, ?, ?, ?, ?, ?)';
         const [insertResult] = await connection.execute(insertSql, [
+          template.user_id,
           template.type,
           template.amount,
           template.category,

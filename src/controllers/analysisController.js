@@ -8,11 +8,12 @@ const AnalysisController = {
    */
   async getSummary(req, res, next) {
     try {
-      const cacheKey = 'analysis:summary';
+      const userId = req.user.id;
+      const cacheKey = `analysis:${userId}:summary`;
       const cachedData = await cacheEngine.get(cacheKey);
 
       if (cachedData) {
-        console.log('[Cache Hit] Mengambil real-time balance summary dari cache');
+        console.log(`[Cache Hit] Mengambil real-time balance summary dari cache untuk user ${userId}`);
         return res.json({
           success: true,
           from_cache: true,
@@ -20,7 +21,7 @@ const AnalysisController = {
         });
       }
 
-      const summary = await TransactionModel.getSummary();
+      const summary = await TransactionModel.getSummary(userId);
       await cacheEngine.set(cacheKey, summary, 300);
 
       res.json({
@@ -38,11 +39,12 @@ const AnalysisController = {
    */
   async getCategoryExpenses(req, res, next) {
     try {
-      const cacheKey = 'analysis:category';
+      const userId = req.user.id;
+      const cacheKey = `analysis:${userId}:category`;
       const cachedData = await cacheEngine.get(cacheKey);
 
       if (cachedData) {
-        console.log('[Cache Hit] Mengambil agregasi kategori dari cache');
+        console.log(`[Cache Hit] Mengambil agregasi kategori dari cache untuk user ${userId}`);
         return res.json({
           success: true,
           from_cache: true,
@@ -50,7 +52,7 @@ const AnalysisController = {
         });
       }
 
-      const categoryExpenses = await TransactionModel.getExpenseByCategoryForCurrentMonth();
+      const categoryExpenses = await TransactionModel.getExpenseByCategoryForCurrentMonth(userId);
       await cacheEngine.set(cacheKey, categoryExpenses, 300);
 
       res.json({
@@ -68,15 +70,16 @@ const AnalysisController = {
    */
   async getBudgetForecasts(req, res, next) {
     try {
+      const userId = req.user.id;
       const today = new Date();
       const month = req.query.month || (today.getMonth() + 1);
       const year = req.query.year || today.getFullYear();
       
-      const cacheKey = `analysis:budgets:${month}_${year}`;
+      const cacheKey = `analysis:${userId}:budgets:${month}_${year}`;
       const cachedData = await cacheEngine.get(cacheKey);
 
       if (cachedData) {
-        console.log(`[Cache Hit] Mengambil proyeksi anggaran ${month}/${year} dari cache`);
+        console.log(`[Cache Hit] Mengambil proyeksi anggaran ${month}/${year} dari cache untuk user ${userId}`);
         return res.json({
           success: true,
           from_cache: true,
@@ -84,7 +87,7 @@ const AnalysisController = {
         });
       }
 
-      const forecast = await AnalyticsService.getBudgetProjections(month, year);
+      const forecast = await AnalyticsService.getBudgetProjections(userId, month, year);
       await cacheEngine.set(cacheKey, forecast, 300);
 
       res.json({
@@ -102,11 +105,12 @@ const AnalysisController = {
    */
   async getFinancialHealth(req, res, next) {
     try {
-      const cacheKey = 'analysis:health';
+      const userId = req.user.id;
+      const cacheKey = `analysis:${userId}:health`;
       const cachedData = await cacheEngine.get(cacheKey);
 
       if (cachedData) {
-        console.log('[Cache Hit] Mengambil Skor Kesehatan Finansial dari cache');
+        console.log(`[Cache Hit] Mengambil Skor Kesehatan Finansial dari cache untuk user ${userId}`);
         return res.json({
           success: true,
           from_cache: true,
@@ -114,7 +118,7 @@ const AnalysisController = {
         });
       }
 
-      const healthReport = await AnalyticsService.getFinancialHealthScore();
+      const healthReport = await AnalyticsService.getFinancialHealthScore(userId);
       await cacheEngine.set(cacheKey, healthReport, 300);
 
       res.json({
@@ -132,12 +136,13 @@ const AnalysisController = {
    */
   async getCashflowTrend(req, res, next) {
     try {
+      const userId = req.user.id;
       const limitMonths = req.query.limit || 6;
-      const cacheKey = `analysis:cashflow-trend:${limitMonths}`;
+      const cacheKey = `analysis:${userId}:cashflow-trend:${limitMonths}`;
       const cachedData = await cacheEngine.get(cacheKey);
 
       if (cachedData) {
-        console.log(`[Cache Hit] Mengambil tren cashflow bulanan (${limitMonths} bulan) dari cache`);
+        console.log(`[Cache Hit] Mengambil tren cashflow bulanan (${limitMonths} bulan) dari cache untuk user ${userId}`);
         return res.json({
           success: true,
           from_cache: true,
@@ -145,7 +150,7 @@ const AnalysisController = {
         });
       }
 
-      const history = await TransactionModel.getMonthlyCashflowHistory(limitMonths);
+      const history = await TransactionModel.getMonthlyCashflowHistory(userId, limitMonths);
       await cacheEngine.set(cacheKey, history, 300);
 
       res.json({

@@ -4,15 +4,16 @@ import cacheEngine from '../utils/cache.js';
 
 const GoalController = {
   /**
-   * Mengambil semua daftar target tabungan beserta analisis progres (Dicache selama 5 menit)
+   * Mengambil semua daftar target tabungan beserta analisis progres (Dicache selama 5 menit per user)
    */
   async getGoals(req, res, next) {
     try {
-      const cacheKey = 'goals:list';
+      const userId = req.user.id;
+      const cacheKey = `goals:${userId}:list`;
       const cachedData = await cacheEngine.get(cacheKey);
 
       if (cachedData) {
-        console.log('[Cache Hit] Mengambil analisis target tabungan dari cache');
+        console.log(`[Cache Hit] Mengambil analisis target tabungan dari cache untuk user ${userId}`);
         return res.json({
           success: true,
           from_cache: true,
@@ -21,7 +22,7 @@ const GoalController = {
         });
       }
 
-      const analyzedGoals = await AnalyticsService.getSavingsGoalsAnalysis();
+      const analyzedGoals = await AnalyticsService.getSavingsGoalsAnalysis(userId);
       await cacheEngine.set(cacheKey, analyzedGoals, 300);
 
       res.json({
@@ -36,12 +37,13 @@ const GoalController = {
   },
 
   /**
-   * Mengambil detail target tabungan
+   * Mengambil detail target tabungan untuk user tertentu
    */
   async getGoalById(req, res, next) {
     try {
+      const userId = req.user.id;
       const { id } = req.params;
-      const goal = await GoalModel.getById(id);
+      const goal = await GoalModel.getById(id, userId);
       
       if (!goal) {
         return res.status(404).json({
@@ -64,13 +66,14 @@ const GoalController = {
    */
   async createGoal(req, res, next) {
     try {
+      const userId = req.user.id;
       const goalData = req.body;
-      const newGoal = await GoalModel.create(goalData);
+      const newGoal = await GoalModel.create(userId, goalData);
       
-      // Invalidate caches
-      await cacheEngine.deleteByPrefix('goals:');
-      await cacheEngine.deleteByPrefix('analysis:'); // Kesehatan keuangan bergantung pada goals
-      console.log('[Cache Invalidation] Berhasil mengosongkan cache goals & analisis karena target baru ditambahkan.');
+      // Invalidate user specific caches
+      await cacheEngine.deleteByPrefix(`goals:${userId}:`);
+      await cacheEngine.deleteByPrefix(`analysis:${userId}:`); // Kesehatan keuangan bergantung pada goals
+      console.log(`[Cache Invalidation] Berhasil mengosongkan cache goals & analisis user ${userId} karena target baru ditambahkan.`);
 
       res.status(201).json({
         success: true,
@@ -87,10 +90,11 @@ const GoalController = {
    */
   async contributeToGoal(req, res, next) {
     try {
+      const userId = req.user.id;
       const { id } = req.params;
       const { amount } = req.body;
 
-      const goal = await GoalModel.getById(id);
+      const goal = await GoalModel.getById(id, userId);
       if (!goal) {
         return res.status(404).json({
           success: false,
@@ -98,7 +102,7 @@ const GoalController = {
         });
       }
 
-      const isUpdated = await GoalModel.addContribution(id, amount);
+      const isUpdated = await GoalModel.addContribution(id, userId, amount);
       if (!isUpdated) {
         return res.status(500).json({
           success: false,
@@ -107,11 +111,11 @@ const GoalController = {
       }
 
       // Invalidate caches
-      await cacheEngine.deleteByPrefix('goals:');
-      await cacheEngine.deleteByPrefix('analysis:');
-      console.log('[Cache Invalidation] Berhasil mengosongkan cache goals & analisis karena kontribusi tabungan baru masuk.');
+      await cacheEngine.deleteByPrefix(`goals:${userId}:`);
+      await cacheEngine.deleteByPrefix(`analysis:${userId}:`);
+      console.log(`[Cache Invalidation] Berhasil mengosongkan cache goals & analisis user ${userId} karena kontribusi tabungan baru masuk.`);
 
-      const updatedGoal = await GoalModel.getById(id);
+      const updatedGoal = await GoalModel.getById(id, userId);
       
       res.json({
         success: true,
@@ -128,10 +132,11 @@ const GoalController = {
    */
   async updateGoal(req, res, next) {
     try {
+      const userId = req.user.id;
       const { id } = req.params;
       const goalData = req.body;
 
-      const goal = await GoalModel.getById(id);
+      const goal = await GoalModel.getById(id, userId);
       if (!goal) {
         return res.status(404).json({
           success: false,
@@ -139,14 +144,14 @@ const GoalController = {
         });
       }
 
-      await GoalModel.update(id, goalData);
+      await GoalModel.update(id, userId, goalData);
       
       // Invalidate caches
-      await cacheEngine.deleteByPrefix('goals:');
-      await cacheEngine.deleteByPrefix('analysis:');
-      console.log('[Cache Invalidation] Berhasil mengosongkan cache goals & analisis karena target diperbarui.');
+      await cacheEngine.deleteByPrefix(`goals:${userId}:`);
+      await cacheEngine.deleteByPrefix(`analysis:${userId}:`);
+      console.log(`[Cache Invalidation] Berhasil mengosongkan cache goals & analisis user ${userId} karena target diperbarui.`);
 
-      const updatedGoal = await GoalModel.getById(id);
+      const updatedGoal = await GoalModel.getById(id, userId);
 
       res.json({
         success: true,
@@ -163,8 +168,9 @@ const GoalController = {
    */
   async deleteGoal(req, res, next) {
     try {
+      const userId = req.user.id;
       const { id } = req.params;
-      const isDeleted = await GoalModel.delete(id);
+      const isDeleted = await GoalModel.delete(id, userId);
       
       if (!isDeleted) {
         return res.status(404).json({
@@ -174,9 +180,9 @@ const GoalController = {
       }
 
       // Invalidate caches
-      await cacheEngine.deleteByPrefix('goals:');
-      await cacheEngine.deleteByPrefix('analysis:');
-      console.log('[Cache Invalidation] Berhasil mengosongkan cache goals & analisis karena target dihapus.');
+      await cacheEngine.deleteByPrefix(`goals:${userId}:`);
+      await cacheEngine.deleteByPrefix(`analysis:${userId}:`);
+      console.log(`[Cache Invalidation] Berhasil mengosongkan cache goals & analisis user ${userId} karena target dihapus.`);
 
       res.json({
         success: true,

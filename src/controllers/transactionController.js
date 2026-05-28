@@ -7,8 +7,9 @@ const TransactionController = {
    */
   async getTransactions(req, res, next) {
     try {
+      const userId = req.user.id;
       const { type, category, limit = 100, offset = 0 } = req.query;
-      const transactions = await TransactionModel.getAll({ type, category, limit, offset });
+      const transactions = await TransactionModel.getAll(userId, { type, category, limit, offset });
       
       res.json({
         success: true,
@@ -25,8 +26,9 @@ const TransactionController = {
    */
   async getTransactionById(req, res, next) {
     try {
+      const userId = req.user.id;
       const { id } = req.params;
-      const transaction = await TransactionModel.getById(id);
+      const transaction = await TransactionModel.getById(id, userId);
       
       if (!transaction) {
         return res.status(404).json({
@@ -49,12 +51,13 @@ const TransactionController = {
    */
   async createTransaction(req, res, next) {
     try {
+      const userId = req.user.id;
       const transactionData = req.body;
-      const newTransaction = await TransactionModel.create(transactionData);
+      const newTransaction = await TransactionModel.create(userId, transactionData);
       
-      // Mengosongkan seluruh cache analisis finansial karena data mutasi telah berubah
-      await cacheEngine.deleteByPrefix('analysis:');
-      console.log('[Cache Invalidation] Berhasil mengosongkan cache analisis karena transaksi baru ditambahkan.');
+      // Mengosongkan seluruh cache analisis finansial user karena data mutasi telah berubah
+      await cacheEngine.deleteByPrefix(`analysis:${userId}:`);
+      console.log(`[Cache Invalidation] Berhasil mengosongkan cache analisis user ${userId} karena transaksi baru ditambahkan.`);
 
       res.status(201).json({
         success: true,
@@ -71,8 +74,9 @@ const TransactionController = {
    */
   async deleteTransaction(req, res, next) {
     try {
+      const userId = req.user.id;
       const { id } = req.params;
-      const isDeleted = await TransactionModel.delete(id);
+      const isDeleted = await TransactionModel.delete(id, userId);
       
       if (!isDeleted) {
         return res.status(404).json({
@@ -81,9 +85,9 @@ const TransactionController = {
         });
       }
 
-      // Mengosongkan seluruh cache analisis finansial karena data mutasi telah berubah
-      await cacheEngine.deleteByPrefix('analysis:');
-      console.log('[Cache Invalidation] Berhasil mengosongkan cache analisis karena transaksi dihapus.');
+      // Mengosongkan seluruh cache analisis finansial user karena data mutasi telah berubah
+      await cacheEngine.deleteByPrefix(`analysis:${userId}:`);
+      console.log(`[Cache Invalidation] Berhasil mengosongkan cache analisis user ${userId} karena transaksi dihapus.`);
 
       res.json({
         success: true,

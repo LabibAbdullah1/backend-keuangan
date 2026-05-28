@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 
 import apiRouter from './src/routes/api.js';
+import authRouter from './src/routes/auth.js';
 import errorHandler from './src/middlewares/errorHandler.js';
 
 dotenv.config();
@@ -76,6 +77,7 @@ app.get('/', (req, res) => {
 });
 
 // Bind modular routes
+app.use('/api/auth', authRouter);
 app.use('/api', apiRouter);
 
 // ==========================================
