@@ -33,13 +33,14 @@ const GoalModel = {
    */
   async create(userId, data) {
     const { name, target_amount, target_date, current_amount = 0 } = data;
+    const formattedDate = typeof target_date === 'string' ? target_date.split('T')[0] : new Date(target_date).toISOString().split('T')[0];
     const sql = 'INSERT INTO savings_goals (user_id, name, target_amount, target_date, current_amount) VALUES (?, ?, ?, ?, ?)';
-    const [result] = await pool.execute(sql, [userId, name, target_amount, target_date, current_amount]);
+    const [result] = await pool.execute(sql, [userId, name, target_amount, formattedDate, current_amount]);
     return {
       id: result.insertId,
       name,
       target_amount: parseFloat(target_amount),
-      target_date,
+      target_date: formattedDate,
       current_amount: parseFloat(current_amount)
     };
   },
@@ -58,8 +59,9 @@ const GoalModel = {
    */
   async update(id, userId, data) {
     const { name, target_amount, target_date } = data;
+    const formattedDate = typeof target_date === 'string' ? target_date.split('T')[0] : new Date(target_date).toISOString().split('T')[0];
     const sql = 'UPDATE savings_goals SET name = ?, target_amount = ?, target_date = ? WHERE id = ? AND user_id = ?';
-    const [result] = await pool.execute(sql, [name, target_amount, target_date, id, userId]);
+    const [result] = await pool.execute(sql, [name, target_amount, formattedDate, id, userId]);
     return result.affectedRows > 0;
   },
 

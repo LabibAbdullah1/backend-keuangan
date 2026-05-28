@@ -65,13 +65,45 @@ app.use('/api', limiter);
 // ==========================================
 // 2. INTEGRASI RUTE UTAMA (API PATHS)
 // ==========================================
-// Rute status server utama (Berguna untuk cPanel setup checking)
-app.get('/', (req, res) => {
+// Rute status server utama (Berguna untuk cPanel setup checking dan Diagnostik Database)
+app.get('/', async (req, res) => {
+  let dbStatus = { connected: false, error: null, tables: [], usersCount: 0, transactionsCount: 0 };
+  try {
+    const { pool } = await import('./src/config/db.js');
+    const connection = await pool.getConnection();
+    dbStatus.connected = true;
+    
+    // Get tables
+    const [rows] = await connection.query('SHOW TABLES;');
+    dbStatus.tables = rows.map(r => Object.values(r)[0]);
+    
+    // Get users count
+    try {
+      const [users] = await connection.query('SELECT COUNT(*) as count FROM users;');
+      dbStatus.usersCount = users[0].count;
+    } catch (uErr) {
+      dbStatus.usersError = uErr.message;
+    }
+
+    // Get transactions count
+    try {
+      const [transactions] = await connection.query('SELECT COUNT(*) as count FROM transactions;');
+      dbStatus.transactionsCount = transactions[0].count;
+    } catch (tErr) {
+      dbStatus.transactionsError = tErr.message;
+    }
+
+    connection.release();
+  } catch (err) {
+    dbStatus.error = err.message;
+  }
+
   res.json({
     success: true,
     message: 'Personal Finance API Server berjalan dengan sehat dan aman.',
     environment: process.env.NODE_ENV || 'production',
     timestamp: new Date().toISOString(),
+    database: dbStatus,
     api_documentation: '/api/transactions'
   });
 });

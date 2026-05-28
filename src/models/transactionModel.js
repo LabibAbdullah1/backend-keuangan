@@ -40,11 +40,13 @@ const TransactionModel = {
    */
   async create(userId, data) {
     const { type, amount, category, date, note } = data;
+    const formattedDate = typeof date === 'string' ? date.split('T')[0] : new Date(date).toISOString().split('T')[0];
     const sql = 'INSERT INTO transactions (user_id, type, amount, category, date, note) VALUES (?, ?, ?, ?, ?, ?)';
-    const [result] = await pool.execute(sql, [userId, type, amount, category, date, note || null]);
+    const [result] = await pool.execute(sql, [userId, type, amount, category, formattedDate, note || null]);
     return {
       id: result.insertId,
-      ...data
+      ...data,
+      date: formattedDate
     };
   },
 

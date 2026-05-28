@@ -45,12 +45,14 @@ const RecurringModel = {
    */
   async create(userId, data) {
     const { type, amount, category, frequency, note, next_due_date } = data;
+    const formattedDate = typeof next_due_date === 'string' ? next_due_date.split('T')[0] : new Date(next_due_date).toISOString().split('T')[0];
     const sql = 'INSERT INTO recurring_templates (user_id, type, amount, category, frequency, note, next_due_date) VALUES (?, ?, ?, ?, ?, ?, ?)';
-    const [result] = await pool.execute(sql, [userId, type, amount, category, frequency, note || null, next_due_date]);
+    const [result] = await pool.execute(sql, [userId, type, amount, category, frequency, note || null, formattedDate]);
     return {
       id: result.insertId,
       ...data,
       amount: parseFloat(amount),
+      next_due_date: formattedDate,
       is_active: true
     };
   },
@@ -59,9 +61,10 @@ const RecurringModel = {
    * Memperbarui tanggal jatuh tempo berikutnya
    */
   async updateNextDueDate(id, nextDueDate, connection = null) {
+    const formattedDate = typeof nextDueDate === 'string' ? nextDueDate.split('T')[0] : new Date(nextDueDate).toISOString().split('T')[0];
     const sql = 'UPDATE recurring_templates SET next_due_date = ? WHERE id = ?';
     const client = connection || pool;
-    const [result] = await client.execute(sql, [nextDueDate, id]);
+    const [result] = await client.execute(sql, [formattedDate, id]);
     return result.affectedRows > 0;
   },
 
