@@ -57,6 +57,30 @@ const UserModel = {
     const sql = 'UPDATE users SET refresh_token = NULL WHERE id = ?';
     const [result] = await pool.execute(sql, [id]);
     return result.affectedRows > 0;
+  },
+
+  /**
+   * Memeriksa apakah username atau email sudah digunakan oleh user lain
+   */
+  async existsOther(id, username, email) {
+    const sql = 'SELECT id FROM users WHERE (username = ? OR email = ?) AND id != ?';
+    const [rows] = await pool.execute(sql, [username, email, id]);
+    return rows.length > 0;
+  },
+
+  /**
+   * Memperbarui profil user (username, email, password opsional)
+   */
+  async update(id, username, email, hashedPassword = null) {
+    if (hashedPassword) {
+      const sql = 'UPDATE users SET username = ?, email = ?, password = ? WHERE id = ?';
+      const [result] = await pool.execute(sql, [username, email, hashedPassword, id]);
+      return result.affectedRows > 0;
+    } else {
+      const sql = 'UPDATE users SET username = ?, email = ? WHERE id = ?';
+      const [result] = await pool.execute(sql, [username, email, id]);
+      return result.affectedRows > 0;
+    }
   }
 };
 

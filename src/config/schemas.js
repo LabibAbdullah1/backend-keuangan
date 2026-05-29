@@ -119,6 +119,23 @@ const schemas = {
     password: Joi.string().required().messages({
       'any.required': 'Password wajib diisi.'
     })
+  }),
+
+  updateProfileSchema: Joi.object({
+    username: Joi.string().alphanum().min(3).max(30).trim().required().messages({
+      'string.alphanum': 'Username hanya boleh berisi huruf dan angka.',
+      'string.min': 'Username minimal harus 3 karakter.',
+      'string.max': 'Username maksimal 30 karakter.',
+      'any.required': 'Username wajib diisi.'
+    }),
+    email: Joi.string().email().required().messages({
+      'string.email': 'Format email tidak valid.',
+      'any.required': 'Email wajib diisi.'
+    }),
+    password: Joi.string().min(6).max(100).allow('', null).messages({
+      'string.min': 'Password baru minimal harus 6 karakter.',
+      'string.max': 'Password baru maksimal 100 karakter.'
+    })
   })
 };
 

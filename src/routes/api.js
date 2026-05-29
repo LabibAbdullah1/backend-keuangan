@@ -8,6 +8,7 @@ import BudgetController from '../controllers/budgetController.js';
 import GoalController from '../controllers/goalController.js';
 import AnalysisController from '../controllers/analysisController.js';
 import RecurringController from '../controllers/recurringController.js';
+import AuthController from '../controllers/authController.js';
 
 const router = express.Router();
 
@@ -71,5 +72,10 @@ router.get('/analysis/health', AnalysisController.getFinancialHealth);
 
 // Histori cashflow bulanan (Grafik/Charts)
 router.get('/analysis/cashflow-trend', AnalysisController.getCashflowTrend);
+
+// ==========================================
+// 7. RUTE PROFIL USER (USER PROFILE)
+// ==========================================
+router.put('/users/profile', validate(schemas.updateProfileSchema), AuthController.updateProfile);
 
 export default router;

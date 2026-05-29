@@ -194,6 +194,59 @@ const AuthController = {
     } catch (error) {
       next(error);
     }
+  },
+
+  /**
+   * Memperbarui data profil pribadi pengguna
+   */
+  async updateProfile(req, res, next) {
+    try {
+      const userId = req.user.id;
+      const { username, email, password } = req.body;
+
+      // Cek apakah username atau email baru sudah diklaim oleh user lain
+      const exists = await UserModel.existsOther(userId, username, email);
+      if (exists) {
+        return res.status(409).json({
+          success: false,
+          message: 'Username atau Email sudah terdaftar pada pengguna lain.'
+        });
+      }
+
+      let hashedPassword = null;
+      if (password && password.trim() !== '') {
+        const salt = await bcrypt.genSalt(10);
+        hashedPassword = await bcrypt.hash(password, salt);
+      }
+
+      // Update data di database
+      await UserModel.update(userId, username, email, hashedPassword);
+
+      // Cari user terupdate
+      const updatedUser = await UserModel.findById(userId);
+
+      // Hasilkan token JWT baru agar sinkron dengan data baru
+      const { accessToken, refreshToken } = generateTokens({
+        id: updatedUser.id,
+        username: updatedUser.username,
+        email: updatedUser.email
+      });
+
+      // Update refresh token di database
+      await UserModel.updateRefreshToken(userId, refreshToken);
+
+      res.json({
+        success: true,
+        message: 'Profil Anda berhasil diperbarui.',
+        data: {
+          user: updatedUser,
+          accessToken,
+          refreshToken
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 };
 
