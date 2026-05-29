@@ -1,15 +1,25 @@
 import BudgetModel from '../models/budgetModel.js';
+import PartnershipModel from '../models/partnershipModel.js';
 import cacheEngine from '../utils/cache.js';
 
 const BudgetController = {
   /**
-   * Mengambil semua daftar anggaran/limit bulanan untuk user tertentu
+   * Mengambil semua daftar anggaran/limit bulanan (mendukung Mode Pasangan)
    */
   async getBudgets(req, res, next) {
     try {
       const userId = req.user.id;
-      const { month, year } = req.query;
-      const budgets = await BudgetModel.getAll(userId, month, year);
+      const { month, year, mode } = req.query;
+      
+      let partnerId = null;
+      if (mode === 'couple') {
+        const partner = await PartnershipModel.getActivePartner(userId);
+        if (partner) {
+          partnerId = partner.partner_id;
+        }
+      }
+
+      const budgets = await BudgetModel.getAll(userId, month, year, partnerId);
       
       res.json({
         success: true,
@@ -22,7 +32,7 @@ const BudgetController = {
   },
 
   /**
-   * Membuat atau memperbarui (upsert) nominal batas anggaran kategori untuk user tertentu
+   * Membuat atau memperbarui (upsert) nominal batas anggaran kategori
    */
   async saveBudget(req, res, next) {
     try {
@@ -30,9 +40,16 @@ const BudgetController = {
       const budgetData = req.body;
       const result = await BudgetModel.upsert(userId, budgetData);
       
-      // Mengosongkan cache analisis user karena budget kategori diubah/ditambahkan
+      // Kosongkan cache untuk pembuat
       await cacheEngine.deleteByPrefix(`analysis:${userId}:`);
-      console.log(`[Cache Invalidation] Berhasil mengosongkan cache analisis user ${userId} karena anggaran bulanan diubah/di-upsert.`);
+      console.log(`[Cache Invalidation] Mengosongkan cache analisis user ${userId} karena anggaran diubah.`);
+
+      // Kosongkan juga cache pasangan jika ada
+      const partner = await PartnershipModel.getActivePartner(userId);
+      if (partner) {
+        await cacheEngine.deleteByPrefix(`analysis:${partner.partner_id}:`);
+        console.log(`[Cache Invalidation] Mengosongkan cache analisis pasangan ${partner.partner_id} karena anggaran diubah.`);
+      }
 
       res.json({
         success: true,
@@ -45,13 +62,21 @@ const BudgetController = {
   },
 
   /**
-   * Menghapus alokasi anggaran kategori berdasarkan ID untuk user tertentu
+   * Menghapus alokasi anggaran kategori berdasarkan ID (mendukung saling percaya antar pasangan)
    */
   async deleteBudget(req, res, next) {
     try {
       const userId = req.user.id;
       const { id } = req.params;
-      const isDeleted = await BudgetModel.delete(id, userId);
+      const { mode } = req.query;
+
+      let partnerId = null;
+      const partner = await PartnershipModel.getActivePartner(userId);
+      if (partner) {
+        partnerId = partner.partner_id;
+      }
+
+      const isDeleted = await BudgetModel.delete(id, userId, partnerId);
       
       if (!isDeleted) {
         return res.status(404).json({
@@ -60,9 +85,14 @@ const BudgetController = {
         });
       }
 
-      // Mengosongkan cache analisis user karena budget kategori dihapus
+      // Kosongkan cache pembuat
       await cacheEngine.deleteByPrefix(`analysis:${userId}:`);
-      console.log(`[Cache Invalidation] Berhasil mengosongkan cache analisis user ${userId} karena anggaran bulanan dihapus.`);
+
+      // Kosongkan cache pasangan jika ada
+      if (partnerId) {
+        await cacheEngine.deleteByPrefix(`analysis:${partnerId}:`);
+        console.log(`[Cache Invalidation] Mengosongkan cache analisis berdua (${userId} & ${partnerId}) karena anggaran dihapus.`);
+      }
 
       res.json({
         success: true,

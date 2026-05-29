@@ -2,11 +2,18 @@ import { pool } from '../config/db.js';
 
 const RecurringModel = {
   /**
-   * Mengambil semua templat transaksi berulang untuk user tertentu
+   * Mengambil semua templat transaksi berulang (mendukung Mode Pasangan)
    */
-  async getAll(userId) {
-    const sql = 'SELECT id, type, amount, category, frequency, note, DATE_FORMAT(next_due_date, "%Y-%m-%d") as next_due_date, is_active, created_at FROM recurring_templates WHERE user_id = ? ORDER BY next_due_date ASC';
-    const [rows] = await pool.execute(sql, [userId]);
+  async getAll(userId, partnerId = null) {
+    const userIds = partnerId ? [userId, partnerId] : [userId];
+    const sql = `
+      SELECT r.id, r.type, r.amount, r.category, r.frequency, r.note, DATE_FORMAT(r.next_due_date, "%Y-%m-%d") as next_due_date, r.is_active, r.created_at, u.username as creator_name 
+      FROM recurring_templates r
+      JOIN users u ON r.user_id = u.id
+      WHERE r.user_id IN (?) 
+      ORDER BY r.next_due_date ASC
+    `;
+    const [rows] = await pool.query(sql, [userIds]);
     return rows.map(row => ({
       ...row,
       amount: parseFloat(row.amount || 0),
@@ -15,11 +22,17 @@ const RecurringModel = {
   },
 
   /**
-   * Mengambil templat transaksi berulang berdasarkan ID untuk user tertentu
+   * Mengambil templat transaksi berulang berdasarkan ID (mendukung Mode Pasangan)
    */
-  async getById(id, userId) {
-    const sql = 'SELECT id, type, amount, category, frequency, note, DATE_FORMAT(next_due_date, "%Y-%m-%d") as next_due_date, is_active, created_at FROM recurring_templates WHERE id = ? AND user_id = ?';
-    const [rows] = await pool.execute(sql, [id, userId]);
+  async getById(id, userId, partnerId = null) {
+    const userIds = partnerId ? [userId, partnerId] : [userId];
+    const sql = `
+      SELECT r.id, r.type, r.amount, r.category, r.frequency, r.note, DATE_FORMAT(r.next_due_date, "%Y-%m-%d") as next_due_date, r.is_active, r.created_at, u.username as creator_name 
+      FROM recurring_templates r
+      JOIN users u ON r.user_id = u.id
+      WHERE r.id = ? AND r.user_id IN (?)
+    `;
+    const [rows] = await pool.query(sql, [id, userIds]);
     if (rows[0]) {
       rows[0].amount = parseFloat(rows[0].amount || 0);
       rows[0].is_active = Boolean(rows[0].is_active);
@@ -69,20 +82,22 @@ const RecurringModel = {
   },
 
   /**
-   * Menonaktifkan/mengaktifkan templat berulang untuk user tertentu
+   * Menonaktifkan/mengaktifkan templat berulang (mendukung aksi berpasangan)
    */
-  async toggleActive(id, userId, isActive) {
-    const sql = 'UPDATE recurring_templates SET is_active = ? WHERE id = ? AND user_id = ?';
-    const [result] = await pool.execute(sql, [isActive ? 1 : 0, id, userId]);
+  async toggleActive(id, userId, isActive, partnerId = null) {
+    const userIds = partnerId ? [userId, partnerId] : [userId];
+    const sql = 'UPDATE recurring_templates SET is_active = ? WHERE id = ? AND user_id IN (?)';
+    const [result] = await pool.query(sql, [isActive ? 1 : 0, id, userIds]);
     return result.affectedRows > 0;
   },
 
   /**
-   * Menghapus templat transaksi berulang untuk user tertentu
+   * Menghapus templat transaksi berulang (mendukung saling percaya antar pasangan)
    */
-  async delete(id, userId) {
-    const sql = 'DELETE FROM recurring_templates WHERE id = ? AND user_id = ?';
-    const [result] = await pool.execute(sql, [id, userId]);
+  async delete(id, userId, partnerId = null) {
+    const userIds = partnerId ? [userId, partnerId] : [userId];
+    const sql = 'DELETE FROM recurring_templates WHERE id = ? AND user_id IN (?)';
+    const [result] = await pool.query(sql, [id, userIds]);
     return result.affectedRows > 0;
   }
 };

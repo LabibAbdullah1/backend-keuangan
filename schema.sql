@@ -74,3 +74,17 @@ CREATE TABLE IF NOT EXISTS `recurring_templates` (
   INDEX `idx_recurring_user_due` (`user_id`, `is_active`, `next_due_date`),
   FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 5. Partnerships Table (Menghubungkan dua pengguna sebagai pasangan)
+CREATE TABLE IF NOT EXISTS `partnerships` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `requester_id` INT NOT NULL,
+  `receiver_id` INT NOT NULL,
+  `status` ENUM('pending', 'accepted', 'rejected') DEFAULT 'pending',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uq_partnership_pair` (`requester_id`, `receiver_id`),
+  FOREIGN KEY (`requester_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`receiver_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

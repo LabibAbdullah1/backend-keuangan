@@ -2,11 +2,18 @@ import { pool } from '../config/db.js';
 
 const GoalModel = {
   /**
-   * Mengambil seluruh target tabungan untuk user tertentu
+   * Mengambil seluruh target tabungan (mendukung Mode Pasangan)
    */
-  async getAll(userId) {
-    const sql = 'SELECT id, name, target_amount, current_amount, DATE_FORMAT(target_date, "%Y-%m-%d") as target_date, created_at FROM savings_goals WHERE user_id = ? ORDER BY target_date ASC';
-    const [rows] = await pool.execute(sql, [userId]);
+  async getAll(userId, partnerId = null) {
+    const userIds = partnerId ? [userId, partnerId] : [userId];
+    const sql = `
+      SELECT g.id, g.name, g.target_amount, g.current_amount, DATE_FORMAT(g.target_date, "%Y-%m-%d") as target_date, g.created_at, u.username as creator_name 
+      FROM savings_goals g
+      JOIN users u ON g.user_id = u.id
+      WHERE g.user_id IN (?) 
+      ORDER BY g.target_date ASC
+    `;
+    const [rows] = await pool.query(sql, [userIds]);
     return rows.map(row => ({
       ...row,
       target_amount: parseFloat(row.target_amount || 0),
@@ -15,11 +22,17 @@ const GoalModel = {
   },
 
   /**
-   * Mengambil target tabungan berdasarkan ID untuk user tertentu
+   * Mengambil target tabungan berdasarkan ID (mendukung Mode Pasangan)
    */
-  async getById(id, userId) {
-    const sql = 'SELECT id, name, target_amount, current_amount, DATE_FORMAT(target_date, "%Y-%m-%d") as target_date, created_at FROM savings_goals WHERE id = ? AND user_id = ?';
-    const [rows] = await pool.execute(sql, [id, userId]);
+  async getById(id, userId, partnerId = null) {
+    const userIds = partnerId ? [userId, partnerId] : [userId];
+    const sql = `
+      SELECT g.id, g.name, g.target_amount, g.current_amount, DATE_FORMAT(g.target_date, "%Y-%m-%d") as target_date, g.created_at, u.username as creator_name 
+      FROM savings_goals g
+      JOIN users u ON g.user_id = u.id
+      WHERE g.id = ? AND g.user_id IN (?)
+    `;
+    const [rows] = await pool.query(sql, [id, userIds]);
     if (rows[0]) {
       rows[0].target_amount = parseFloat(rows[0].target_amount || 0);
       rows[0].current_amount = parseFloat(rows[0].current_amount || 0);
@@ -46,31 +59,34 @@ const GoalModel = {
   },
 
   /**
-   * Mengalokasikan tabungan ke dalam goal tertentu (tambah nominal tabungan) untuk user tertentu
+   * Mengalokasikan tabungan ke dalam goal tertentu (tambah nominal tabungan, mendukung aksi berpasangan)
    */
-  async addContribution(id, userId, amount) {
-    const sql = 'UPDATE savings_goals SET current_amount = current_amount + ? WHERE id = ? AND user_id = ?';
-    const [result] = await pool.execute(sql, [amount, id, userId]);
+  async addContribution(id, userId, amount, partnerId = null) {
+    const userIds = partnerId ? [userId, partnerId] : [userId];
+    const sql = 'UPDATE savings_goals SET current_amount = current_amount + ? WHERE id = ? AND user_id IN (?)';
+    const [result] = await pool.query(sql, [amount, id, userIds]);
     return result.affectedRows > 0;
   },
 
   /**
-   * Memperbarui detail target tabungan untuk user tertentu
+   * Memperbarui detail target tabungan (mendukung aksi berpasangan)
    */
-  async update(id, userId, data) {
+  async update(id, userId, data, partnerId = null) {
     const { name, target_amount, target_date } = data;
+    const userIds = partnerId ? [userId, partnerId] : [userId];
     const formattedDate = typeof target_date === 'string' ? target_date.split('T')[0] : new Date(target_date).toISOString().split('T')[0];
-    const sql = 'UPDATE savings_goals SET name = ?, target_amount = ?, target_date = ? WHERE id = ? AND user_id = ?';
-    const [result] = await pool.execute(sql, [name, target_amount, formattedDate, id, userId]);
+    const sql = 'UPDATE savings_goals SET name = ?, target_amount = ?, target_date = ? WHERE id = ? AND user_id IN (?)';
+    const [result] = await pool.query(sql, [name, target_amount, formattedDate, id, userIds]);
     return result.affectedRows > 0;
   },
 
   /**
-   * Menghapus target tabungan untuk user tertentu
+   * Menghapus target tabungan (mendukung saling percaya antar pasangan)
    */
-  async delete(id, userId) {
-    const sql = 'DELETE FROM savings_goals WHERE id = ? AND user_id = ?';
-    const [result] = await pool.execute(sql, [id, userId]);
+  async delete(id, userId, partnerId = null) {
+    const userIds = partnerId ? [userId, partnerId] : [userId];
+    const sql = 'DELETE FROM savings_goals WHERE id = ? AND user_id IN (?)';
+    const [result] = await pool.query(sql, [id, userIds]);
     return result.affectedRows > 0;
   }
 };

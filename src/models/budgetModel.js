@@ -2,11 +2,22 @@ import { pool } from '../config/db.js';
 
 const BudgetModel = {
   /**
-   * Mengambil semua daftar anggaran berdasarkan bulan dan tahun untuk user tertentu
+   * Mengambil semua daftar anggaran berdasarkan bulan dan tahun (mendukung Mode Pasangan)
+   * Jika partnerId aktif, nominal anggaran dengan kategori yang sama otomatis digabungkan.
    */
-  async getAll(userId, month, year) {
-    let sql = 'SELECT id, category, amount, month, year, created_at FROM budgets WHERE user_id = ?';
-    const params = [userId];
+  async getAll(userId, month, year, partnerId = null) {
+    const userIds = partnerId ? [userId, partnerId] : [userId];
+    let sql;
+    const params = [];
+
+    if (partnerId) {
+      // Kelompokkan berdasarkan kategori, bulan, tahun dan jumlahkan limit anggarannya
+      sql = 'SELECT MIN(id) as id, category, SUM(amount) as amount, month, year, MIN(created_at) as created_at FROM budgets WHERE user_id IN (?)';
+      params.push(userIds);
+    } else {
+      sql = 'SELECT id, category, amount, month, year, created_at FROM budgets WHERE user_id = ?';
+      params.push(userId);
+    }
 
     if (month) {
       sql += ' AND month = ?';
@@ -17,8 +28,12 @@ const BudgetModel = {
       params.push(parseInt(year, 10));
     }
 
+    if (partnerId) {
+      sql += ' GROUP BY category, month, year';
+    }
+
     sql += ' ORDER BY year DESC, month DESC, category ASC';
-    const [rows] = await pool.execute(sql, params);
+    const [rows] = await pool.query(sql, params);
     return rows.map(row => ({
       ...row,
       amount: parseFloat(row.amount || 0)
@@ -26,11 +41,20 @@ const BudgetModel = {
   },
 
   /**
-   * Mengambil satu budget berdasarkan kategori, bulan, dan tahun untuk user tertentu
+   * Mengambil satu budget berdasarkan kategori, bulan, dan tahun (mendukung Mode Pasangan)
    */
-  async getByCategoryAndMonth(userId, category, month, year) {
-    const sql = 'SELECT id, category, amount, month, year, created_at FROM budgets WHERE user_id = ? AND category = ? AND month = ? AND year = ?';
-    const [rows] = await pool.execute(sql, [userId, category, parseInt(month, 10), parseInt(year, 10)]);
+  async getByCategoryAndMonth(userId, category, month, year, partnerId = null) {
+    const userIds = partnerId ? [userId, partnerId] : [userId];
+    let sql;
+    const params = [userIds, category, parseInt(month, 10), parseInt(year, 10)];
+
+    if (partnerId) {
+      sql = 'SELECT MIN(id) as id, category, SUM(amount) as amount, month, year, MIN(created_at) as created_at FROM budgets WHERE user_id IN (?) AND category = ? AND month = ? AND year = ? GROUP BY category, month, year';
+    } else {
+      sql = 'SELECT id, category, amount, month, year, created_at FROM budgets WHERE user_id IN (?) AND category = ? AND month = ? AND year = ?';
+    }
+
+    const [rows] = await pool.query(sql, params);
     if (rows[0]) {
       rows[0].amount = parseFloat(rows[0].amount || 0);
       return rows[0];
@@ -60,11 +84,12 @@ const BudgetModel = {
   },
 
   /**
-   * Menghapus anggaran berdasarkan ID untuk user tertentu
+   * Menghapus anggaran berdasarkan ID (mendukung saling percaya antar pasangan)
    */
-  async delete(id, userId) {
-    const sql = 'DELETE FROM budgets WHERE id = ? AND user_id = ?';
-    const [result] = await pool.execute(sql, [id, userId]);
+  async delete(id, userId, partnerId = null) {
+    const userIds = partnerId ? [userId, partnerId] : [userId];
+    const sql = 'DELETE FROM budgets WHERE id = ? AND user_id IN (?)';
+    const [result] = await pool.query(sql, [id, userIds]);
     return result.affectedRows > 0;
   }
 };

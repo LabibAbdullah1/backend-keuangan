@@ -9,6 +9,8 @@ import GoalController from '../controllers/goalController.js';
 import AnalysisController from '../controllers/analysisController.js';
 import RecurringController from '../controllers/recurringController.js';
 import AuthController from '../controllers/authController.js';
+import PartnershipController from '../controllers/partnershipController.js';
+
 
 const router = express.Router();
 
@@ -78,4 +80,15 @@ router.get('/analysis/cashflow-trend', AnalysisController.getCashflowTrend);
 // ==========================================
 router.put('/users/profile', validate(schemas.updateProfileSchema), AuthController.updateProfile);
 
+// ==========================================
+// 8. RUTE KEMITRAAN / KELOLA BERSAMA (PARTNERSHIPS)
+// ==========================================
+router.post('/partnership/invite', PartnershipController.invite);
+router.get('/partnership/invites', PartnershipController.getInvites);
+router.put('/partnership/accept/:id', PartnershipController.accept);
+router.put('/partnership/reject/:id', PartnershipController.reject);
+router.get('/partnership/active', PartnershipController.getActive);
+router.delete('/partnership/disconnect', PartnershipController.disconnect);
+
 export default router;
+
