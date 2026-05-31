@@ -10,6 +10,7 @@ import AnalysisController from '../controllers/analysisController.js';
 import RecurringController from '../controllers/recurringController.js';
 import AuthController from '../controllers/authController.js';
 import PartnershipController from '../controllers/partnershipController.js';
+import CalculatorController from '../controllers/calculatorController.js';
 
 
 const router = express.Router();
@@ -89,6 +90,14 @@ router.put('/partnership/accept/:id', PartnershipController.accept);
 router.put('/partnership/reject/:id', PartnershipController.reject);
 router.get('/partnership/active', PartnershipController.getActive);
 router.delete('/partnership/disconnect', PartnershipController.disconnect);
+
+// ==========================================
+// 9. RUTE KALKULATOR KEUANGAN (FINANCIAL CALCULATORS)
+// ==========================================
+router.post('/calculators/budget-allocation', validate(schemas.budgetAllocationSchema), CalculatorController.getBudgetAllocation);
+router.post('/calculators/savings-simulator', validate(schemas.savingsSimulatorSchema), CalculatorController.getSavingsProjection);
+router.post('/calculators/emergency-fund', validate(schemas.emergencyFundSchema), CalculatorController.getEmergencyFundRecommendation);
+router.post('/calculators/debt-payoff', validate(schemas.debtPayoffSchema), CalculatorController.getDebtPayoffStrategy);
 
 export default router;
 

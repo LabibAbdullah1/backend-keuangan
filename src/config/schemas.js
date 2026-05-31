@@ -136,6 +136,92 @@ const schemas = {
       'string.min': 'Password baru minimal harus 6 karakter.',
       'string.max': 'Password baru maksimal 100 karakter.'
     })
+  }),
+
+  budgetAllocationSchema: Joi.object({
+    monthly_income: Joi.number().positive().required().messages({
+      'number.base': 'Pendapatan bulanan harus berupa angka.',
+      'number.positive': 'Pendapatan bulanan harus bernilai positif.',
+      'any.required': 'Pendapatan bulanan wajib diisi.'
+    })
+  }),
+
+  savingsSimulatorSchema: Joi.object({
+    target_amount: Joi.number().positive().required().messages({
+      'number.base': 'Target nominal harus berupa angka.',
+      'number.positive': 'Target nominal harus bernilai positif.',
+      'any.required': 'Target nominal wajib diisi.'
+    }),
+    current_amount: Joi.number().min(0).default(0).messages({
+      'number.base': 'Tabungan saat ini harus berupa angka.',
+      'number.min': 'Tabungan saat ini tidak boleh bernilai negatif.'
+    }),
+    duration_months: Joi.number().integer().positive().messages({
+      'number.base': 'Durasi bulan harus berupa angka.',
+      'number.integer': 'Durasi bulan harus berupa bilangan bulat.',
+      'number.positive': 'Durasi bulan harus bernilai positif.'
+    }),
+    monthly_contribution: Joi.number().positive().messages({
+      'number.base': 'Kontribusi bulanan harus berupa angka.',
+      'number.positive': 'Kontribusi bulanan harus bernilai positif.'
+    }),
+    annual_interest_rate: Joi.number().min(0).default(0).messages({
+      'number.base': 'Suku bunga tahunan harus berupa angka.',
+      'number.min': 'Suku bunga tahunan tidak boleh bernilai negatif.'
+    })
+  }).or('duration_months', 'monthly_contribution').messages({
+    'object.missing': 'Harus menyertakan salah satu dari duration_months atau monthly_contribution.'
+  }),
+
+  emergencyFundSchema: Joi.object({
+    monthly_expense: Joi.number().positive().messages({
+      'number.base': 'Pengeluaran bulanan harus berupa angka.',
+      'number.positive': 'Pengeluaran bulanan harus bernilai positif.'
+    }),
+    marital_status: Joi.string().valid('single', 'married').default('single').messages({
+      'any.only': 'Status pernikahan harus berupa "single" atau "married".'
+    }),
+    dependents_count: Joi.number().integer().min(0).default(0).messages({
+      'number.base': 'Jumlah tanggungan harus berupa angka.',
+      'number.integer': 'Jumlah tanggungan harus berupa bilangan bulat.',
+      'number.min': 'Jumlah tanggungan tidak boleh bernilai negatif.'
+    }),
+    include_partner: Joi.boolean().default(false).messages({
+      'boolean.base': 'Parameter include_partner harus berupa boolean.'
+    })
+  }),
+
+  debtPayoffSchema: Joi.object({
+    debts: Joi.array().items(
+      Joi.object({
+        name: Joi.string().max(100).trim().required().messages({
+          'string.empty': 'Nama utang tidak boleh kosong.',
+          'any.required': 'Nama utang wajib diisi.'
+        }),
+        balance: Joi.number().positive().required().messages({
+          'number.base': 'Saldo utang harus berupa angka.',
+          'number.positive': 'Saldo utang harus bernilai positif.',
+          'any.required': 'Saldo utang wajib diisi.'
+        }),
+        interest_rate: Joi.number().min(0).required().messages({
+          'number.base': 'Suku bunga utang harus berupa angka.',
+          'number.min': 'Suku bunga utang tidak boleh bernilai negatif.',
+          'any.required': 'Suku bunga utang wajib diisi.'
+        }),
+        minimum_payment: Joi.number().positive().required().messages({
+          'number.base': 'Cicilan minimum harus berupa angka.',
+          'number.positive': 'Cicilan minimum harus bernilai positif.',
+          'any.required': 'Cicilan minimum wajib diisi.'
+        })
+      })
+    ).min(1).required().messages({
+      'array.min': 'Daftar utang minimal harus berisi 1 utang.',
+      'any.required': 'Daftar utang wajib diisi.'
+    }),
+    extra_monthly_payment: Joi.number().min(0).default(0).messages({
+      'number.base': 'Dana ekstra bulanan harus berupa angka.',
+      'number.min': 'Dana ekstra bulanan tidak boleh bernilai negatif.'
+    })
   })
 };
 
