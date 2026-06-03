@@ -1,4 +1,5 @@
 import BudgetModel from '../models/budgetModel.js';
+import CategoryModel from '../models/categoryModel.js';
 import PartnershipModel from '../models/partnershipModel.js';
 import cacheEngine from '../utils/cache.js';
 
@@ -38,6 +39,16 @@ const BudgetController = {
     try {
       const userId = req.user.id;
       const budgetData = req.body;
+      const { category } = budgetData;
+
+      const categoryExists = await CategoryModel.existsByNameAndType(userId, category, 'expense');
+      if (!categoryExists) {
+        return res.status(400).json({
+          success: false,
+          message: `Kategori "${category}" tidak valid atau bukan merupakan kategori pengeluaran.`
+        });
+      }
+
       const result = await BudgetModel.upsert(userId, budgetData);
       
       // Kosongkan cache untuk pembuat

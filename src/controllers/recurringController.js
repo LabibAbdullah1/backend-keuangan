@@ -1,4 +1,5 @@
 import RecurringModel from '../models/recurringModel.js';
+import CategoryModel from '../models/categoryModel.js';
 import RecurringService from '../services/recurringService.js';
 import cacheEngine from '../utils/cache.js';
 
@@ -27,6 +28,16 @@ const RecurringController = {
     try {
       const userId = req.user.id;
       const templateData = req.body;
+      const { category, type } = templateData;
+
+      const categoryExists = await CategoryModel.existsByNameAndType(userId, category, type);
+      if (!categoryExists) {
+        return res.status(400).json({
+          success: false,
+          message: `Kategori "${category}" tidak valid untuk tipe transaksi "${type}".`
+        });
+      }
+
       const newTemplate = await RecurringModel.create(userId, templateData);
       
       res.status(201).json({

@@ -4,6 +4,7 @@ import schemas from '../config/schemas.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 
 import TransactionController from '../controllers/transactionController.js';
+import CategoryController from '../controllers/categoryController.js';
 import BudgetController from '../controllers/budgetController.js';
 import GoalController from '../controllers/goalController.js';
 import AnalysisController from '../controllers/analysisController.js';
@@ -32,6 +33,14 @@ router.get('/transactions', TransactionController.getTransactions);
 router.get('/transactions/:id', TransactionController.getTransactionById);
 router.post('/transactions', validate(schemas.transactionSchema), TransactionController.createTransaction);
 router.delete('/transactions/:id', TransactionController.deleteTransaction);
+
+// ==========================================
+// 2.5. RUTE KATEGORI (CATEGORIES)
+// ==========================================
+router.get('/categories', CategoryController.getCategories);
+router.post('/categories', validate(schemas.createCategorySchema), CategoryController.createCategory);
+router.put('/categories/:id', validate(schemas.updateCategorySchema), CategoryController.updateCategory);
+router.delete('/categories/:id', CategoryController.deleteCategory);
 
 // ==========================================
 // 3. RUTE ANGGARAN (BUDGETS)

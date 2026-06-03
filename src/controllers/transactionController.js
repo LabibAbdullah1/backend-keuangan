@@ -1,4 +1,5 @@
 import TransactionModel from '../models/transactionModel.js';
+import CategoryModel from '../models/categoryModel.js';
 import PartnershipModel from '../models/partnershipModel.js';
 import cacheEngine from '../utils/cache.js';
 
@@ -73,6 +74,16 @@ const TransactionController = {
     try {
       const userId = req.user.id;
       const transactionData = req.body;
+      const { category, type } = transactionData;
+
+      const categoryExists = await CategoryModel.existsByNameAndType(userId, category, type);
+      if (!categoryExists) {
+        return res.status(400).json({
+          success: false,
+          message: `Kategori "${category}" tidak valid untuk tipe transaksi "${type}".`
+        });
+      }
+
       const newTransaction = await TransactionModel.create(userId, transactionData);
       
       // Kosongkan cache untuk pembuat

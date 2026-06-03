@@ -1,5 +1,6 @@
 import app from './app.js';
 import { testConnection } from './src/config/db.js';
+import CategoryModel from './src/models/categoryModel.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -12,6 +13,10 @@ async function startServer() {
     // 1. Uji koneksi ke database MySQL sebelum mendengarkan request HTTP
     console.log('[Inisialisasi] Menguji koneksi database...');
     await testConnection();
+
+    // 1.5. Inisialisasi dan seed tabel kategori
+    console.log('[Inisialisasi] Menginisialisasi tabel kategori...');
+    await CategoryModel.initializeTable();
 
     // 2. Mulai server Express
     app.listen(PORT, () => {

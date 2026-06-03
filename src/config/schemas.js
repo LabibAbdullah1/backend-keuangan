@@ -222,6 +222,26 @@ const schemas = {
       'number.base': 'Dana ekstra bulanan harus berupa angka.',
       'number.min': 'Dana ekstra bulanan tidak boleh bernilai negatif.'
     })
+  }),
+
+  createCategorySchema: Joi.object({
+    name: Joi.string().max(100).trim().required().messages({
+      'string.empty': 'Nama kategori tidak boleh kosong.',
+      'string.max': 'Nama kategori maksimal 100 karakter.',
+      'any.required': 'Nama kategori wajib diisi.'
+    }),
+    type: Joi.string().valid('income', 'expense').required().messages({
+      'any.only': 'Tipe kategori harus "income" atau "expense".',
+      'any.required': 'Tipe kategori wajib diisi.'
+    })
+  }),
+
+  updateCategorySchema: Joi.object({
+    name: Joi.string().max(100).trim().required().messages({
+      'string.empty': 'Nama kategori tidak boleh kosong.',
+      'string.max': 'Nama kategori maksimal 100 karakter.',
+      'any.required': 'Nama kategori wajib diisi.'
+    })
   })
 };
 
