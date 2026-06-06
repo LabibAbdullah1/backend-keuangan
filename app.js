@@ -39,8 +39,9 @@ app.use(cors({
   credentials: true
 }));
 
-// Body parser untuk data JSON murni
-app.use(express.json());
+// Body parser untuk data JSON murni dengan limit besar untuk berkas/gambar base64 struk belanja
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Logger sederhana untuk memantau request masuk di console (sangat berguna untuk debugging)
 app.use((req, res, next) => {

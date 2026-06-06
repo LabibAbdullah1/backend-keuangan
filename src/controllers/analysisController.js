@@ -1,5 +1,6 @@
 import TransactionModel from '../models/transactionModel.js';
 import AnalyticsService from '../services/analyticsService.js';
+import PartnershipModel from '../models/partnershipModel.js';
 import cacheEngine from '../utils/cache.js';
 
 const AnalysisController = {
@@ -106,11 +107,21 @@ const AnalysisController = {
   async getFinancialHealth(req, res, next) {
     try {
       const userId = req.user.id;
-      const cacheKey = `analysis:${userId}:health`;
+      const mode = req.query.mode || req.body.mode;
+      
+      let partnerId = null;
+      if (mode === 'couple') {
+        const partner = await PartnershipModel.getActivePartner(userId);
+        if (partner) {
+          partnerId = partner.partner_id;
+        }
+      }
+
+      const cacheKey = `analysis:${userId}:health:${mode || 'solo'}`;
       const cachedData = await cacheEngine.get(cacheKey);
 
       if (cachedData) {
-        console.log(`[Cache Hit] Mengambil Skor Kesehatan Finansial dari cache untuk user ${userId}`);
+        console.log(`[Cache Hit] Mengambil Skor Kesehatan Finansial dari cache untuk user ${userId} (${mode || 'solo'})`);
         return res.json({
           success: true,
           from_cache: true,
@@ -118,7 +129,7 @@ const AnalysisController = {
         });
       }
 
-      const healthReport = await AnalyticsService.getFinancialHealthScore(userId);
+      const healthReport = await AnalyticsService.getFinancialHealthScore(userId, partnerId);
       await cacheEngine.set(cacheKey, healthReport, 300);
 
       res.json({

@@ -1,16 +1,17 @@
 import TransactionModel from '../models/transactionModel.js';
 import BudgetModel from '../models/budgetModel.js';
 import GoalModel from '../models/goalModel.js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const AnalyticsService = {
   /**
    * Menganalisis kepatuhan anggaran dan memproyeksikan pengeluaran bulanan
    */
-  async getBudgetProjections(userId, month, year) {
+  async getBudgetProjections(userId, month, year, partnerId = null) {
     const activeMonth = parseInt(month, 10);
     const activeYear = parseInt(year, 10);
 
-    const budgets = await BudgetModel.getAll(userId, activeMonth, activeYear);
+    const budgets = await BudgetModel.getAll(userId, activeMonth, activeYear, partnerId);
 
     const today = new Date();
     const currentMonth = today.getMonth() + 1;
@@ -29,7 +30,8 @@ const AnalyticsService = {
         userId,
         budget.category,
         activeMonth,
-        activeYear
+        activeYear,
+        partnerId
       );
 
       const remainingBudget = budget.amount - totalSpent;
@@ -137,14 +139,14 @@ const AnalyticsService = {
   /**
    * Mendapatkan Skor Kesehatan Finansial (Financial Health Score) gabungan
    */
-  async getFinancialHealthScore(userId) {
-    const summary = await TransactionModel.getSummary(userId);
-    const goals = await GoalModel.getAll(userId);
+  async getFinancialHealthScore(userId, partnerId = null) {
+    const summary = await TransactionModel.getSummary(userId, partnerId);
+    const goals = await GoalModel.getAll(userId, partnerId);
 
     const today = new Date();
     const month = today.getMonth() + 1;
     const year = today.getFullYear();
-    const budgetProjectionsObj = await this.getBudgetProjections(userId, month, year);
+    const budgetProjectionsObj = await this.getBudgetProjections(userId, month, year, partnerId);
 
     let score = 100;
     const deductions = [];
@@ -198,10 +200,93 @@ const AnalyticsService = {
     else if (score < 70) grade = 'Cukup Sehat (Fair)';
     else if (score < 90) grade = 'Sehat (Good)';
 
+    const baseAssessments = deductions.length > 0 ? deductions : ['Keuangan Anda dalam kondisi sangat prima! Pertahankan pola ini.'];
+
+    // ── INTEGRASI GEMINI AI DETEKSI ANOMALI & KESEHATAN PERSONAL ──
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (apiKey && apiKey.trim() !== '') {
+      try {
+        const recentTransactions = await TransactionModel.getAll(userId, { limit: 150, partnerId });
+        
+        const financialContext = {
+          baseScore: score,
+          baseAssessments: baseAssessments,
+          summary: {
+            balance: summary.balance,
+            total_income: summary.total_income,
+            total_expense: summary.total_expense
+          },
+          budgets: budgetProjectionsObj.projections.map(p => ({
+            category: p.category,
+            limit: p.budget_limit,
+            spent: p.total_spent,
+            status: p.status
+          })),
+          goals: goals.map(g => ({
+            name: g.name,
+            target: g.target_amount,
+            current: g.current_amount,
+            deadline: g.target_date
+          })),
+          recentTransactions: recentTransactions.map(t => ({
+            type: t.type,
+            amount: t.amount,
+            category: t.category,
+            date: t.date,
+            note: t.note
+          }))
+        };
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+        const model = genAI.getGenerativeModel({ model: modelName });
+        
+        const prompt = `
+Anda adalah KeuanganKu AI, analis keuangan pribadi profesional. Tugas Anda adalah melakukan analisis mendalam mengenai kesehatan keuangan pengguna, mendeteksi kebiasaan tidak wajar (anomali) dari daftar transaksi terbaru mereka, serta memberikan rekomendasi personal.
+
+Berikut adalah data keuangan pengguna saat ini:
+${JSON.stringify(financialContext, null, 2)}
+
+Analisis daftar transaksi di atas secara mendalam untuk mendeteksi:
+1. Anomali pengeluaran (misalnya peningkatan mendadak biaya langganan, makan luar rumah yang tidak terkontrol, pengeluaran impulsif, pengeluaran berulang ganda, dll).
+2. Tuliskan rekomendasi kesehatan keuangan yang ramah, suportif, dan personal (maksimal 4 rekomendasi utama) dalam bahasa Indonesia.
+3. PENTING: Jangan gunakan format Markdown tebal seperti asterisks (**) dalam respon Anda. Ketik semua tulisan sebagai teks polos biasa tanpa simbol format bold/tebal Markdown.
+
+Kembalikan respon hanya berupa JSON string murni (tanpa block code markdown, tanpa tambahan penjelasan) dengan skema berikut:
+{
+  "financial_health_score": angka integer 0-100 (beri bobot/penyesuaian berdasarkan anomali atau pencapaian yang Anda temukan),
+  "grade": rating/kategori kesehatan keuangan (contoh: "Sangat Sehat (Excellent)", "Sehat (Good)", "Cukup Sehat (Fair)", atau "Kurang Sehat (Poor)"),
+  "assessments": [
+     "daftar rekomendasi terperinci dan ramah...",
+     "termasuk pendeteksian anomali atau pola tidak wajar yang Anda temukan secara spesifik..."
+  ]
+}
+        `;
+
+        const result = await model.generateContent(prompt);
+        const jsonText = result.response.text().trim();
+        const cleanJsonText = jsonText.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+        const parsedData = JSON.parse(cleanJsonText);
+        
+        if (parsedData.assessments) {
+          parsedData.assessments = parsedData.assessments.map(a => a.replace(/\*\*/g, ''));
+        }
+
+        return {
+          financial_health_score: parsedData.financial_health_score ?? score,
+          grade: parsedData.grade ?? grade,
+          assessments: parsedData.assessments ?? baseAssessments
+        };
+      } catch (geminiError) {
+        console.warn('[AI Health Analysis] Gagal menggunakan Gemini untuk analisis kesehatan keuangan:', geminiError.message);
+        // Fallback otomatis ke static logic di bawah
+      }
+    }
+
     return {
       financial_health_score: score,
       grade,
-      assessments: deductions.length > 0 ? deductions : ['Keuangan Anda dalam kondisi sangat prima! Pertahankan pola ini.']
+      assessments: baseAssessments
     };
   }
 };

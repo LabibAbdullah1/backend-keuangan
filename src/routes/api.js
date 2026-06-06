@@ -8,6 +8,7 @@ import CategoryController from '../controllers/categoryController.js';
 import BudgetController from '../controllers/budgetController.js';
 import GoalController from '../controllers/goalController.js';
 import AnalysisController from '../controllers/analysisController.js';
+import AIController from '../controllers/aiController.js';
 import RecurringController from '../controllers/recurringController.js';
 import AuthController from '../controllers/authController.js';
 import PartnershipController from '../controllers/partnershipController.js';
@@ -15,6 +16,7 @@ import CalculatorController from '../controllers/calculatorController.js';
 
 
 const router = express.Router();
+
 
 // ==========================================
 // 1. SECURE CRON AUTOMATION ENDPOINT (Bebas JWT, dilindungi X-CRON-KEY)
@@ -84,6 +86,18 @@ router.get('/analysis/health', AnalysisController.getFinancialHealth);
 
 // Histori cashflow bulanan (Grafik/Charts)
 router.get('/analysis/cashflow-trend', AnalysisController.getCashflowTrend);
+
+// Konsultasi Keuangan Pintar berbasis AI Gemini
+router.post('/analysis/ai-chat', AIController.chatWithAI);
+
+// Penguraian Teks Bebas Transaksi oleh AI Gemini
+router.post('/analysis/ai-parse-transaction', AIController.parseTransaction);
+
+// Pemindaian Struk Belanja Otomatis oleh AI Gemini (Multimodal)
+router.post('/analysis/ai-scan-receipt', AIController.scanReceipt);
+
+// Prediksi Arus Kas Bulan Depan oleh AI Gemini
+router.get('/analysis/ai-forecast', AIController.getFinancialForecast);
 
 // ==========================================
 // 7. RUTE PROFIL USER (USER PROFILE)
