@@ -50,10 +50,12 @@ app.use((req, res, next) => {
   next();
 });
 
+app.set('trust proxy', 1);
+
 // Pembatasan laju request (Rate Limiting) untuk mencegah serangan DoS & brute-force
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 menit
-  max: 100, // Maksimal 100 request per menit dari satu IP
+  max: 300, // Maksimal 300 request per menit dari satu IP (ditingkatkan agar pemindaian AI & sinkronisasi tidak terblokir)
   standardHeaders: true,
   legacyHeaders: false,
   message: {
